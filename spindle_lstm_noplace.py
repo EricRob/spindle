@@ -112,11 +112,10 @@ flags.DEFINE_float("drop", 0.5,
                    "Keep dropout probalitity." )
 flags.DEFINE_integer("test", 0,
                     "test mode if 1")
-flags.DEFINE_integer("target_f", 200, "sampled data frequency")
+flags.DEFINE_integer("target_f", 200, "resampled data frequency")
 flags.DEFINE_string("model_path","model","Path to stored model for testing")
 flags.DEFINE_string("test_sub", '01', 'Subject for model testing')
 flags.DEFINE_integer("upsampled", 0, "original frequency if upsampled")
-flags.DEFINE_integer("fold", 1, "fold number for choosing training subjects (five-fold validation). not relevant for testing.")
 
 FLAGS = flags.FLAGS
 BASIC = "basic"
@@ -206,12 +205,7 @@ class SpindleInputDatasetAPI(object):
       self.target_f = target_f = FLAGS.target_f
       filename = []
       #self.subject = subject =  [1] #[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
-      subject = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
-      for remove in np.arange(4*(FLAGS.fold-1) + 1,4*FLAGS.fold + 1):
-        if remove in subject:
-          subject.remove(remove)
-
-      self.subject = subject
+      self.subject = subject = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
 
       self.test_sub = test_sub = [FLAGS.test_sub]
       for k in self.subject:
@@ -774,11 +768,9 @@ def run_epoch(session, model, eval_op=None, verbose=False):
                result[2] + result[3]))
   time_cost = 1000*(time.time() - start_time)*1.0/(model.input.epoch_size * model.input.batch_size)
   print("Time Cost per example %.3f (ms)" % time_cost)
-  os.makedirs("probability", exist_ok=True)
   prob_file_name = os.path.join("probability","probability_sub" + str(model.input.test_sub[0]) + "_" + str(FLAGS.target_f) + "Hz.txt")
-  #pdb.set_trace()
   if FLAGS.upsampled:
-      prob_file_name = os.path.join("probability", str(FLAGS.target_f) + "_from_" + str(FLAGS.upsampled) + "_" + "probability_sub" + str(model.input.test_sub[0]) + ".txt")
+      prob_file_name = os.path.join(str(FLAGS.target_f) + "_from_" + str(FLAGS.upsampled) + "_" + prob_file_name)
   np.savetxt(prob_file_name, probability.astype(float), fmt="%f")
   #np.savetxt("probability_MrOS_18_C3.txt", probability.astype(float), fmt="%f")
   return costs / model.input.epoch_size
@@ -880,10 +872,7 @@ def main(_):
 
     for model in models.values():
       model.import_ops()
-    
-    if not FLAGS.test:
-      os.makedirs(FLAGS.save_path, exist_ok=True)
-    
+
     sv = tf.train.Supervisor(logdir=FLAGS.save_path, save_model_secs=600)
     #gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.2)
     gpu_options = tf.GPUOptions(allow_growth=True)
@@ -922,9 +911,6 @@ def main(_):
 
           lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
           m.assign_lr(session, config.learning_rate * lr_decay)
-          cprint("Fold " + str(FLAGS.fold) + ", " + str(FLAGS.target_f) + "Hz", 'green' )
-          if FLAGS.upsampled:
-            cprint("Upsampled from " + str(FLAGS.upsampled) + "Hz") 
 
           print("Epoch: %d Learning rate: %.6f" % (i + 1, session.run(m.lr)))
           train_loss = run_epoch(session, m, eval_op=m.train_op,
@@ -932,7 +918,7 @@ def main(_):
           print("Epoch: %d Train Loss: %.3f" % (i + 1, train_loss))
           valid_loss = run_epoch(session, mvalid, verbose=False)
           print("Epoch: %d" % (i+1))
-          cprint("Valid Loss: %.3f" % (valid_loss), 'yellow')
+          cprint("Valid Loss: %.3f" % (valid_loss), 'white', 'on_yellow')
           training_loss.append(train_loss)
 
         #fig=plt.figure()
