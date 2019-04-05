@@ -1,0 +1,2 @@
+startTime = startTime - window;
+draw
