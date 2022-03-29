@@ -33,21 +33,6 @@ def spindle_raw_data(data_path=None, subjects=None, num_steps=50, target_f=200, 
   file_names = {}
   for subject in subjects:
     file_names[subject] = {}
-    
-    #file_names['test'] = ['test_synthetic_-5dB']
-    #file_names['train'] = ['Augment_train_MASS_sub19_50_100%_f200_mf']
-    #file_names['valid'] = ['Augment_valid_MASS_sub19_50_100%_f200_mf']
-    #file_names['test'] = ['Augment_test_MASS_sub19_50_100%_f200_mf']
-    #file_names['train'] = ['Augment_train_Dream_50_synth1']
-    #file_names['valid'] = ['Augment_valid_Dream_50_synth1']
-    #file_names['test'] = ['Augment_test_Dream_50_synth1']
-    #file_names['train'] = ['Augment_train_Dream_nb_50_100%_base']
-    #file_names['valid'] = ['Augment_valid_Dream_nb_50_100%_base']
-    #file_names['test'] = ['Augment_test_Dream_nb_50_100%_base']
-    # file_names['test'] = ['test_excerpt8']
-    #file_names['test'] = ['test_01-02-0016_50_100%_f200_mf']
-    #file_names['test'] = ['test_alpha']
-    #file_names['test'] = ['test_Dino_062014_mPFC']
     if test_flag:
 
       if upsampled:
@@ -108,30 +93,17 @@ def convert_to_tfrecord(data_files, label_files, output_file, num_steps, test_fl
 
 def write_to_tfrecord(sequence, labels, num_steps, record_writer):
 
+  # If half of the samples in a sequence are a spindle then it gets a "1" label?
   if sum(labels) > num_steps/2:
      Label = 1
   else:
      Label = 0
-  #Label = sum(labels)/num_steps
+
   example = tf.train.Example(features=tf.train.Features(
     feature={
         'image': _float_feature(sequence.flatten()),
-        #'image': _bytes_feature(struct.pack("f", sequence)),
-        #'label': _int64_feature(Label)
         'label': _float_feature([Label])
     }))
-
-  #features = tf.parse_single_example(
-  #        example.SerializeToString(),
-  #        features={
-  #                 'image': tf.FixedLenFeature([num_steps*23], tf.float32),
-  #                 'label': tf.FixedLenFeature([], tf.float32),
-  #                 })
-
-  #data  = tf.cast(features['image'], tf.float32)
-  #sess=tf.Session()
-  #pdb.set_trace()
-  #data = tf.decode_raw(features['image'], tf.float32)
 
   record_writer.write(example.SerializeToString())
 
